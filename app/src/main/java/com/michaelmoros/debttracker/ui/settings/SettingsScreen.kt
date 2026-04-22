@@ -1,0 +1,178 @@
+package com.michaelmoros.debttracker.ui.settings
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.michaelmoros.debttracker.ui.FrictionConfirmDialog
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    onNavigateToDisplay: () -> Unit,
+    onNavigateToCurrency: () -> Unit,
+    onNavigateToTheme: () -> Unit,
+    onNavigateToManageContext: () -> Unit,
+    onNavigateToManageBackups: () -> Unit,
+    onNavigateToExportNaming: () -> Unit,
+    onNavigateToAbout: () -> Unit,
+    onResetDefaults: () -> Unit,
+    onBack: () -> Unit
+) {
+    var showResetDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValue ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(paddingValue)
+                .fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                SettingsSectionHeader("Appearance")
+                SettingsItem(
+                    title = "Display Settings",
+                    subtitle = "Change item size and font scale",
+                    icon = Icons.Default.AspectRatio,
+                    onClick = onNavigateToDisplay
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsItem(
+                    title = "Theme Settings",
+                    subtitle = "Switch between light, dark, or system theme",
+                    icon = Icons.Default.Brightness4,
+                    onClick = onNavigateToTheme
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsItem(
+                    title = "Currency",
+                    subtitle = "Choose your preferred currency symbol",
+                    icon = Icons.Default.Payments,
+                    onClick = onNavigateToCurrency
+                )
+            }
+            item {
+                SettingsSectionHeader("Data Management")
+                SettingsItem(
+                    title = "Manage Contexts",
+                    subtitle = "Add, remove or hide categories",
+                    icon = Icons.Default.Category,
+                    onClick = onNavigateToManageContext
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsItem(
+                    title = "Backup & Restore",
+                    subtitle = "Export or import your database",
+                    icon = Icons.Default.Backup,
+                    onClick = onNavigateToManageBackups
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsItem(
+                    title = "Export Naming Convention",
+                    subtitle = "Choose how backup files are named",
+                    icon = Icons.Default.DriveFileRenameOutline,
+                    onClick = onNavigateToExportNaming
+                )
+            }
+            item {
+                SettingsSectionHeader("Other")
+                SettingsItem(
+                    title = "About",
+                    subtitle = "App info and developer details",
+                    icon = Icons.Default.Info,
+                    onClick = onNavigateToAbout
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsItem(
+                    title = "Reset Defaults",
+                    subtitle = "Clear all data and reset categories",
+                    icon = Icons.Default.DeleteForever,
+                    iconColor = MaterialTheme.colorScheme.error,
+                    onClick = { showResetDialog = true }
+                )
+            }
+        }
+    }
+
+    FrictionConfirmDialog(
+        show = showResetDialog,
+        title = "Reset All Data?",
+        message = "This will permanently delete all your entries, transactions, and custom categories. This action cannot be undone.",
+        requiredPhrase = "reset-everything",
+        confirmButtonText = "RESET EVERYTHING",
+        isDestructive = true,
+        onDismiss = { showResetDialog = false },
+        onConfirm = {
+            onResetDefaults()
+            showResetDialog = false
+        }
+    )
+}
+
+@Composable
+private fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 0.dp, bottom = 12.dp)
+    )
+}
+
+@Composable
+private fun SettingsItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconColor: Color = MaterialTheme.colorScheme.primary,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, tint = iconColor)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+        }
+    }
+}

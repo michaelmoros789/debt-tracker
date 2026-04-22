@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Debt Tracker</string>
+    <string name="github_url">https://github.com/michaelmoros789/debt-tracker</string>
+    <string name="developer_email">michaelmoros09@gmail.com</string>
+    <string name="about_mission_title">Our Mission</string>
+    <string name="about_mission_text">A minimalist tool designed to help you track personal debts and credits with ease. No clutter, just what you need to keep your finances in check.</string>
+    <string name="about_open_source_title">Open Source</string>
+    <string name="about_github_repo">GitHub Repository</string>
+    <string name="about_github_desc">View source code and contribute</string>
+    <string name="about_send_feedback">SEND FEEDBACK</string>
+    <string name="feedback_dialog_title">Send Feedback</string>
+    <string name="feedback_dialog_desc">Share your thoughts or report an issue. This will open your email app.</string>
+    <string name="feedback_subject_label">Subject</string>
+    <string name="feedback_message_label">Message</string>
+    <string name="feedback_submit_button">OPEN EMAIL APP</string>
+    <string name="feedback_cancel_button">CANCEL</string>
+    <string name="error_no_email_app">No email app found</string>
+    <string name="error_no_browser">No web browser found</string>
+</resources>
