@@ -21,10 +21,18 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
     private val settingsManager = SettingsManager(application)
 
     // Settings flows
-    val itemSize = MutableStateFlow(settingsManager.itemSize).asStateFlow()
-    val currencySymbol = MutableStateFlow(settingsManager.currencySymbol).asStateFlow()
-    val themeMode = MutableStateFlow(settingsManager.themeMode).asStateFlow()
-    val exportNamingConvention = MutableStateFlow(settingsManager.exportNamingConvention).asStateFlow()
+    private val _itemSize = MutableStateFlow(settingsManager.itemSize)
+    val itemSize = _itemSize.asStateFlow()
+
+    private val _currencySymbol = MutableStateFlow(settingsManager.currencySymbol)
+    val currencySymbol = _currencySymbol.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(settingsManager.themeMode)
+    val themeMode = _themeMode.asStateFlow()
+
+    private val _exportNamingConvention = MutableStateFlow(settingsManager.exportNamingConvention)
+    val exportNamingConvention = _exportNamingConvention.asStateFlow()
+
     val contexts = dao.getAllContexts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _searchQuery = MutableStateFlow("")
@@ -66,30 +74,30 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setItemSize(size: com.michaelmoros.debttracker.ui.settings.ItemSize) {
         settingsManager.itemSize = size
-        (itemSize as MutableStateFlow).value = size
+        _itemSize.value = size
     }
 
     fun setCurrencySymbol(symbol: String) {
         settingsManager.currencySymbol = symbol
-        (currencySymbol as MutableStateFlow).value = symbol
+        _currencySymbol.value = symbol
     }
 
     fun setThemeMode(mode: ThemeMode) {
         settingsManager.themeMode = mode
-        (themeMode as MutableStateFlow).value = mode
+        _themeMode.value = mode
     }
 
     fun setExportNamingConvention(convention: com.michaelmoros.debttracker.ui.settings.ExportNamingConvention) {
         settingsManager.exportNamingConvention = convention
-        (exportNamingConvention as MutableStateFlow).value = convention
+        _exportNamingConvention.value = convention
     }
 
     fun resetDefaults(onComplete: (String) -> Unit) {
         settingsManager.resetToDefaults()
-        (itemSize as MutableStateFlow).value = settingsManager.itemSize
-        (currencySymbol as MutableStateFlow).value = settingsManager.currencySymbol
-        (themeMode as MutableStateFlow).value = settingsManager.themeMode
-        (exportNamingConvention as MutableStateFlow).value = settingsManager.exportNamingConvention
+        _itemSize.value = settingsManager.itemSize
+        _currencySymbol.value = settingsManager.currencySymbol
+        _themeMode.value = settingsManager.themeMode
+        _exportNamingConvention.value = settingsManager.exportNamingConvention
         onComplete("Settings reset to defaults")
     }
 
