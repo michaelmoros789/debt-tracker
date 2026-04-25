@@ -3,6 +3,7 @@ package com.michaelmoros.debttracker.ui.settings
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.database.sqlite.SQLiteDatabase
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -265,7 +266,7 @@ fun ManageBackupsScreen(
                         title = "Restore SQL (.db)",
                         subtitle = "Restore everything from a previously saved backup file",
                         icon = Icons.Default.Restore,
-                        iconColor = MaterialTheme.colorScheme.error,
+                        iconColor = Color.Red,
                         onClick = {
                             pickSqlLauncher.launch(arrayOf("application/x-sqlite3", "application/octet-stream"))
                         }
@@ -292,18 +293,46 @@ fun ManageBackupsScreen(
                     isRestoring = true
                     scope.launch(Dispatchers.IO) {
                         try {
-                            // 1. Close and Reset Database Instance
+                            // 1. Validation Step: Temporary Copy and Structural Check
+                            val tempFile = File(context.cacheDir, "temp_restore.db")
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                tempFile.outputStream().use { output -> input.copyTo(output) }
+                            }
+
+                            val isValid = try {
+                                SQLiteDatabase.openDatabase(tempFile.path, null, SQLiteDatabase.OPEN_READONLY).use { checkDb ->
+                                    // A. Structural Check: Verify required tables exist
+                                    val cursor = checkDb.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('debts', 'transactions')", null)
+                                    val tableCount = cursor.count
+                                    cursor.close()
+                                    
+                                    // B. Integrity Check: Fast native SQLite check for file health
+                                    val integrityCursor = checkDb.rawQuery("PRAGMA integrity_check", null)
+                                    val integrityResult = if (integrityCursor.moveToFirst()) integrityCursor.getString(0) else "failed"
+                                    integrityCursor.close()
+
+                                    tableCount == 2 && integrityResult == "ok"
+                                }
+                            } catch (e: Exception) {
+                                false
+                            }
+
+                            if (!isValid) {
+                                tempFile.delete()
+                                throw Exception("Invalid or corrupted backup file structure.")
+                            }
+
+                            // 2. Close and Reset Database Instance
                             db.close()
                             DebtDatabase.resetInstance()
                             
                             val dbFile = context.getDatabasePath("debt_database")
                             
-                            // 2. Overwrite the main .db file
-                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                dbFile.outputStream().use { output -> input.copyTo(output) }
-                            }
+                            // 3. Move validated temp file to production path
+                            tempFile.copyTo(dbFile, overwrite = true)
+                            tempFile.delete()
                             
-                            // 3. Delete auxiliary SQLite files to ensure fresh load
+                            // 4. Delete auxiliary SQLite files to ensure fresh load
                             val shmFile = File(dbFile.path + "-shm")
                             val walFile = File(dbFile.path + "-wal")
                             if (shmFile.exists()) shmFile.delete()
@@ -326,12 +355,13 @@ fun ManageBackupsScreen(
                                 // Trigger navigation to Splash
                                 onRestoreStarted()
                                 
-                                // 4. Force a clean Activity recreate to re-initialize everything
+                                // 5. Force a clean Activity recreate to re-initialize everything
                                 context.findActivity()?.recreate()
                             }
                         } catch (e: Exception) {
                             withContext(Dispatchers.Main) {
                                 isRestoring = false
+                                showRestoreDialog = false // Dismiss dialog on failure
                                 notificationMessage = "Restore failed: ${e.message}"
                                 notificationType = NotificationType.ERROR
                                 showNotification = true
