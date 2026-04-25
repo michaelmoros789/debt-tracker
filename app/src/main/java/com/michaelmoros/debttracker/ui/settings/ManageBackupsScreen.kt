@@ -3,6 +3,7 @@ package com.michaelmoros.debttracker.ui.settings
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.database.sqlite.SQLiteDatabase
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -346,17 +347,27 @@ fun ManageBackupsScreen(
                                 notificationType = NotificationType.SUCCESS
                                 
                                 // Countdown loop
-                                for (i in 5 downTo 1) {
-                                    notificationMessage = "Restore successful! Refreshing the app in $i..."
+                                for (i in 3 downTo 1) {
+                                    notificationMessage = "Restore successful! Restarting app in $i..."
                                     showNotification = true
                                     delay(1000)
                                 }
                                 
-                                // Trigger navigation to Splash
-                                onRestoreStarted()
-                                
-                                // 5. Force a clean Activity recreate to re-initialize everything
-                                context.findActivity()?.recreate()
+                                // 5. Force a deep restart to clear preserved ViewModels and reload DB
+                                val activity = context.findActivity()
+                                if (activity != null) {
+                                    val restartIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+                                    restartIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                    activity.startActivity(restartIntent)
+                                    activity.finishAffinity()
+                                    // Absolute restart to purge process memory (ViewModels, Singletons)
+                                    java.lang.System.exit(0)
+                                } else {
+                                    // Fallback if activity not found
+                                    notificationMessage = "Restore complete. Please restart the app manually."
+                                    delay(3000)
+                                    isRefreshing = false
+                                }
                             }
                         } catch (e: Exception) {
                             withContext(Dispatchers.Main) {
