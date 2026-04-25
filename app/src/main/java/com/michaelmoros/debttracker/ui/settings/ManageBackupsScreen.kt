@@ -263,8 +263,8 @@ fun ManageBackupsScreen(
                         subtitle = "Restore your data from a previous backup file"
                     )
                     BackupButton(
-                        title = "Restore SQL (.db)",
-                        subtitle = "Restore everything from a previously saved backup file",
+                        title = "Restore Database (.db)",
+                        subtitle = "Overwrite all current entries and history with a previous backup.",
                         icon = Icons.Default.Restore,
                         iconColor = Color.Red,
                         onClick = {

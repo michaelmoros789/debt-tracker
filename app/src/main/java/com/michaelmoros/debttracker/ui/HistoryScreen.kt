@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -65,6 +66,7 @@ fun HistoryScreen(
     val scope = rememberCoroutineScope()
     val db = remember { DebtDatabase.getDatabase(context, scope) }
     val dao = db.debtDao()
+    val clipboardManager = LocalClipboardManager.current
 
     val debtWithTransactions by dao.getDebtWithTransactions(personId).collectAsState(initial = null)
     val transactions by dao.getTransactionsForPerson(personId).collectAsState(initial = emptyList())
@@ -292,6 +294,36 @@ fun HistoryScreen(
                                         },
                                         leadingIcon = { Icon(Icons.Default.Output, contentDescription = null) }
                                     )
+                                    
+                                    if (transactions.size >= 2) {
+                                        DropdownMenuItem(
+                                            text = { Text("Generate Transaction Trail") },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                val sortedTxs = transactions.sortedBy { it.date }
+                                                val latestTx = sortedTxs.last()
+                                                val previousBalance = sortedTxs.dropLast(1).sumOf { it.amount }
+                                                
+                                                val format = DecimalFormat("#,###.##")
+                                                val prevBalStr = format.format(abs(previousBalance) / 100.0)
+                                                val latestAmtStr = format.format(abs(latestTx.amount) / 100.0)
+                                                val newBalStr = format.format(abs(previousBalance + latestTx.amount) / 100.0)
+                                                
+                                                val op = if (previousBalance >= 0) {
+                                                    // Current state: They owe me or settled
+                                                    if (latestTx.amount > 0) "+" else "-"
+                                                } else {
+                                                    // Current state: I owe them
+                                                    if (latestTx.amount < 0) "+" else "-"
+                                                }
+                                                
+                                                val trail = "$prevBalStr\n\n$op$latestAmtStr ${latestTx.description}\n\n$newBalStr"
+                                                clipboardManager.setText(AnnotatedString(trail))
+                                                onShowNotification("Transaction trail copied!", NotificationType.SUCCESS)
+                                            },
+                                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) }
+                                        )
+                                    }
                                 }
                                 DropdownMenuItem(
                                     text = { Text("Delete Person") },
