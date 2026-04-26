@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.michaelmoros.debttracker.*
 import com.michaelmoros.debttracker.ui.settings.ExportNamingConvention
+import com.michaelmoros.debttracker.util.CurrencyFormatter
 import com.michaelmoros.debttracker.util.DebtStatementGenerator
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -825,7 +826,6 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
         colors = CardDefaults.cardColors(containerColor = themeColor.copy(alpha = 0.04f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            val displayBalance = String.format(Locale.getDefault(), "%,.2f", abs(balance) / 100.0)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -845,7 +845,8 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = if (balance == 0L && transactions.isNotEmpty()) "Paid" else "$currencySymbol$displayBalance",
+                        text = if (balance == 0L && transactions.isNotEmpty()) "Paid" 
+                               else CurrencyFormatter.formatStandard(balance, currencySymbol),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = themeColor
@@ -854,8 +855,8 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
             }
 
             if (transactions.isNotEmpty()) {
-                val totalLent = transactions.filter { it.amount > 0 }.sumOf { it.amount } / 100.0
-                val totalBorrowed = abs(transactions.filter { it.amount < 0 }.sumOf { it.amount }) / 100.0
+                val totalLent = transactions.filter { it.amount > 0 }.sumOf { it.amount }
+                val totalBorrowed = transactions.filter { it.amount < 0 }.sumOf { it.amount }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.alpha(0.1f))
@@ -873,14 +874,14 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "↑$currencySymbol${String.format("%,.0f", totalLent)}",
+                            text = "↑${CurrencyFormatter.formatAmount(totalLent, currencySymbol, showSettled = false)}",
                             style = MaterialTheme.typography.labelLarge,
                             color = Color(0xFF2E7D32),
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "↓$currencySymbol${String.format("%,.0f", totalBorrowed)}",
+                            text = "↓${CurrencyFormatter.formatAmount(totalBorrowed, currencySymbol, showSettled = false)}",
                             style = MaterialTheme.typography.labelLarge,
                             color = Color(0xFFD32F2F),
                             fontWeight = FontWeight.Bold

@@ -48,6 +48,7 @@ import com.michaelmoros.debttracker.ui.TransactionDetailsScreen
 import com.michaelmoros.debttracker.ui.settings.*
 import com.michaelmoros.debttracker.ui.theme.MyApplicationTheme
 import com.michaelmoros.debttracker.ui.toDaysAgo
+import com.michaelmoros.debttracker.util.CurrencyFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -281,7 +282,7 @@ fun MainScreen(
                 // Smart balance search logic
                 val balanceCents = person.balance
                 val balanceAbs = abs(balanceCents)
-                val balanceFormatted = formatAmount(balanceCents, currencySymbol).lowercase()
+                val balanceFormatted = CurrencyFormatter.formatAmount(balanceCents, currencySymbol).lowercase()
                 
                 val formattedMatch = balanceFormatted.contains(query)
                 
@@ -600,7 +601,7 @@ fun PersonItem(
         }
         
         Text(
-            text = formatAmount(balance, currencySymbol),
+            text = CurrencyFormatter.formatAmount(balance, currencySymbol),
             modifier = Modifier.width(100.dp),
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = nameSize),
             fontWeight = FontWeight.Bold,
@@ -672,22 +673,5 @@ fun AddPersonSheetContent(
             ) { Text("ADD") }
         }
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-/**
- * Professional Amount Formatter for MVP.
- * Prevents multi-line breakage by using compact notation (k, M, B) for large numbers.
- */
-private fun formatAmount(balanceCents: Long, currencySymbol: String): String {
-    if (balanceCents == 0L) return "Settled"
-    
-    val absAmount = abs(balanceCents / 100.0)
-    
-    return when {
-        absAmount >= 1_000_000_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.1fB", absAmount / 1_000_000_000.0)}"
-        absAmount >= 1_000_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.1fM", absAmount / 1_000_000.0)}"
-        absAmount >= 100_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.0fk", absAmount / 1_000.0)}"
-        else -> "$currencySymbol ${String.format(Locale.getDefault(), "%,.2f", absAmount)}"
     }
 }
