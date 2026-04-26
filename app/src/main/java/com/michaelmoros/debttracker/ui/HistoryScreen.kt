@@ -320,7 +320,7 @@ fun HistoryScreen(
                                                 
                                                 val trail = "$prevBalStr\n\n$op$latestAmtStr ${latestTx.description}\n\n$newBalStr"
                                                 clipboardManager.setText(AnnotatedString(trail))
-                                                onShowNotification("Transaction trail copied!", NotificationType.SUCCESS)
+                                                // Removed redundant notification because Android OS shows "Copied to clipboard"
                                             },
                                             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) }
                                         )
