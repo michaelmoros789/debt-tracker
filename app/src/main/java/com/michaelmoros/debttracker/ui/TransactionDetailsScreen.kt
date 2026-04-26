@@ -20,10 +20,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michaelmoros.debttracker.DebtDatabase
 import com.michaelmoros.debttracker.TransactionEntity
+import com.michaelmoros.debttracker.util.CurrencyFormatter
 import java.util.*
 import kotlin.math.abs
 
@@ -81,7 +83,7 @@ fun TransactionDetailsScreen(
         transaction?.let { tx ->
             val isPositive = tx.amount > 0
             val themeColor = if (isPositive) Color(0xFF2E7D32) else Color(0xFFD32F2F)
-            val displayAmount = String.format(Locale.getDefault(), "%.2f", abs(tx.amount) / 100.0)
+            val displayAmount = CurrencyFormatter.formatStandard(tx.amount, currencySymbol)
 
             // Animation for the arrow rotation
             val rotation by animateFloatAsState(
@@ -89,6 +91,15 @@ fun TransactionDetailsScreen(
                 animationSpec = spring(stiffness = Spring.StiffnessLow),
                 label = "arrow_rotation"
             )
+
+            // Dynamic text size to ensure the amount always fits in one line without ellipsis
+            val amountLength = displayAmount.length
+            val responsiveFontSize = when {
+                amountLength > 20 -> 24.sp
+                amountLength > 16 -> 28.sp
+                amountLength > 12 -> 36.sp
+                else -> 45.sp
+            }
 
             Column(
                 modifier = Modifier
@@ -124,16 +135,21 @@ fun TransactionDetailsScreen(
                     Text(
                         text = if (targetPositive) "Lent to $personName" else "Borrowed from $personName",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip // Ensure full text is seen if possible
                     )
                 }
 
                 Text(
-                    text = "$currencySymbol$displayAmount",
-                    style = MaterialTheme.typography.displayMedium,
+                    text = displayAmount,
+                    style = MaterialTheme.typography.displayMedium.copy(fontSize = responsiveFontSize),
                     fontWeight = FontWeight.Black,
                     color = themeColor,
-                    modifier = Modifier.testTag("details_amount_value")
+                    modifier = Modifier.testTag("details_amount_value"),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Visible
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -229,6 +245,7 @@ fun TransactionDetailsScreen(
                     AnimatedContent(
                         targetState = isPositive,
                         transitionSpec = {
+                            // Professional fade up animation
                             (slideInVertically { it / 2 } + fadeIn(animationSpec = tween(400))).togetherWith(
                                 slideOutVertically { -it / 2 } + fadeOut(animationSpec = tween(400))
                             )
