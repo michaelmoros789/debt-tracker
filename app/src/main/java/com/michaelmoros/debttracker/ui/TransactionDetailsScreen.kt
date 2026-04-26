@@ -29,7 +29,8 @@ fun TransactionDetailsScreen(
     transactionId: Long,
     currencySymbol: String,
     onBack: () -> Unit,
-    onDelete: (TransactionEntity) -> Unit
+    onDelete: (TransactionEntity) -> Unit,
+    onUpdate: (TransactionEntity) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -39,6 +40,7 @@ fun TransactionDetailsScreen(
     var transaction by remember { mutableStateOf<TransactionEntity?>(null) }
     var personName by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSwitchBalanceDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(transactionId) {
         dao.getAllDebtsWithTransactions().collect { allDebts ->
@@ -63,6 +65,12 @@ fun TransactionDetailsScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showSwitchBalanceDialog = true },
+                        modifier = Modifier.testTag("switch_balance_button")
+                    ) {
+                        Icon(Icons.Default.SwapVert, contentDescription = "Switch Balance")
+                    }
                     IconButton(
                         onClick = { showDeleteDialog = true },
                         modifier = Modifier.testTag("delete_transaction_details_button")
@@ -224,6 +232,36 @@ fun TransactionDetailsScreen(
                 }
             }
         )
+    }
+
+    if (showSwitchBalanceDialog) {
+        val tx = transaction
+        if (tx != null) {
+            val isCurrentlyPositive = tx.amount > 0
+            val actionText = if (isCurrentlyPositive) "Borrowing" else "Lending"
+            
+            AlertDialog(
+                onDismissRequest = { showSwitchBalanceDialog = false },
+                title = { Text("Switch Balance Type") },
+                text = { Text("Do you want to change this transaction from ${if (isCurrentlyPositive) "Lending" else "Borrowing"} to $actionText? This will invert the amount to ${-tx.amount / 100.0}.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onUpdate(tx.copy(amount = -tx.amount))
+                            showSwitchBalanceDialog = false
+                        },
+                        modifier = Modifier.testTag("confirm_switch_balance_button")
+                    ) {
+                        Text("SWITCH")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSwitchBalanceDialog = false }) {
+                        Text("CANCEL")
+                    }
+                }
+            )
+        }
     }
 }
 

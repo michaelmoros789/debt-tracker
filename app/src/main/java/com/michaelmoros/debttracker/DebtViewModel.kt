@@ -121,4 +121,11 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
             onComplete()
         }
     }
+
+    fun updateTransaction(transaction: TransactionEntity, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            dao.insertTransaction(transaction)
+            onComplete()
+        }
+    }
 }

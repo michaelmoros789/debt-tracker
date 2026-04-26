@@ -182,6 +182,11 @@ fun AppNavigation(viewModel: DebtViewModel) {
                             showNotification("Transaction deleted", NotificationType.SUCCESS)
                             navigateBack()
                         }
+                    },
+                    onUpdate = { tx ->
+                        viewModel.updateTransaction(tx) {
+                            showNotification("Transaction updated", NotificationType.SUCCESS)
+                        }
                     }
                 )
                 is Screen.Settings -> SettingsScreen(
