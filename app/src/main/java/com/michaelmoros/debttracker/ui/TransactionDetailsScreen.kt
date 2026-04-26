@@ -1,5 +1,7 @@
 package com.michaelmoros.debttracker.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,10 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michaelmoros.debttracker.DebtDatabase
@@ -40,7 +44,6 @@ fun TransactionDetailsScreen(
     var transaction by remember { mutableStateOf<TransactionEntity?>(null) }
     var personName by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showSwitchBalanceDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(transactionId) {
         dao.getAllDebtsWithTransactions().collect { allDebts ->
@@ -66,12 +69,6 @@ fun TransactionDetailsScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { showSwitchBalanceDialog = true },
-                        modifier = Modifier.testTag("switch_balance_button")
-                    ) {
-                        Icon(Icons.Default.SwapVert, contentDescription = "Switch Balance")
-                    }
-                    IconButton(
                         onClick = { showDeleteDialog = true },
                         modifier = Modifier.testTag("delete_transaction_details_button")
                     ) {
@@ -85,6 +82,13 @@ fun TransactionDetailsScreen(
             val isPositive = tx.amount > 0
             val themeColor = if (isPositive) Color(0xFF2E7D32) else Color(0xFFD32F2F)
             val displayAmount = String.format(Locale.getDefault(), "%.2f", abs(tx.amount) / 100.0)
+
+            // Animation for the arrow rotation
+            val rotation by animateFloatAsState(
+                targetValue = if (isPositive) 0f else 180f,
+                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                label = "arrow_rotation"
+            )
 
             Column(
                 modifier = Modifier
@@ -101,21 +105,28 @@ fun TransactionDetailsScreen(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = if (isPositive) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                            imageVector = Icons.Default.ArrowUpward,
                             contentDescription = null,
                             tint = themeColor,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier
+                                .size(40.dp)
+                                .rotate(rotation)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = if (isPositive) "Lent to $personName" else "Borrowed from $personName",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                AnimatedContent(
+                    targetState = isPositive,
+                    label = "text_animation"
+                ) { targetPositive ->
+                    Text(
+                        text = if (targetPositive) "Lent to $personName" else "Borrowed from $personName",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 Text(
                     text = "$currencySymbol$displayAmount",
@@ -125,7 +136,40 @@ fun TransactionDetailsScreen(
                     modifier = Modifier.testTag("details_amount_value")
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Switch Button directly below amount
+                OutlinedButton(
+                    onClick = { onUpdate(tx.copy(amount = -tx.amount)) },
+                    modifier = Modifier.testTag("switch_balance_button"),
+                    shape = RoundedCornerShape(12.dp),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(themeColor.copy(alpha = 0.5f))),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.SwapVert, 
+                        contentDescription = null, 
+                        tint = themeColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "SWITCH TRANSACTION DIRECTION",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = themeColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                Text(
+                    text = "Did you record the wrong transaction type?",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(top = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -182,25 +226,35 @@ fun TransactionDetailsScreen(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = themeColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = if (isPositive) 
-                                "This transaction increases the balance $personName owes you." 
-                            else 
-                                "This transaction increases the amount you owe to $personName.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = themeColor
-                        )
+                    AnimatedContent(
+                        targetState = isPositive,
+                        transitionSpec = {
+                            (slideInVertically { it / 2 } + fadeIn(animationSpec = tween(400))).togetherWith(
+                                slideOutVertically { -it / 2 } + fadeOut(animationSpec = tween(400))
+                            )
+                        },
+                        label = "info_card_animation"
+                    ) { targetPositive ->
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = if (targetPositive) Color(0xFF2E7D32) else Color(0xFFD32F2F),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = if (targetPositive) 
+                                    "This transaction increases the balance $personName owes you." 
+                                else 
+                                    "This transaction increases the amount you owe to $personName.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (targetPositive) Color(0xFF2E7D32) else Color(0xFFD32F2F)
+                            )
+                        }
                     }
                 }
             }
@@ -232,36 +286,6 @@ fun TransactionDetailsScreen(
                 }
             }
         )
-    }
-
-    if (showSwitchBalanceDialog) {
-        val tx = transaction
-        if (tx != null) {
-            val isCurrentlyPositive = tx.amount > 0
-            val actionText = if (isCurrentlyPositive) "Borrowing" else "Lending"
-            
-            AlertDialog(
-                onDismissRequest = { showSwitchBalanceDialog = false },
-                title = { Text("Switch Balance Type") },
-                text = { Text("Do you want to change this transaction from ${if (isCurrentlyPositive) "Lending" else "Borrowing"} to $actionText? This will invert the amount to ${-tx.amount / 100.0}.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            onUpdate(tx.copy(amount = -tx.amount))
-                            showSwitchBalanceDialog = false
-                        },
-                        modifier = Modifier.testTag("confirm_switch_balance_button")
-                    ) {
-                        Text("SWITCH")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showSwitchBalanceDialog = false }) {
-                        Text("CANCEL")
-                    }
-                }
-            )
-        }
     }
 }
 
