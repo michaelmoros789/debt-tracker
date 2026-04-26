@@ -88,10 +88,10 @@ object DebtStatementGenerator {
 
             /* 3. Summary (Right aligned) */
             val currency = currencySymbol
-            val absRemaining = abs(remaining / 100.0)
+            val summaryAmount = CurrencyFormatter.formatStandard(remaining, currency)
             val summaryText = when {
-                remaining > 0 -> "You owe me: $currency ${String.format(Locale.getDefault(), "%.2f", absRemaining)}"
-                remaining < 0 -> "I owe you: $currency ${String.format(Locale.getDefault(), "%.2f", absRemaining)}"
+                remaining > 0 -> "You owe me: $summaryAmount"
+                remaining < 0 -> "I owe you: $summaryAmount"
                 else -> "Settled: $currency 0.00"
             }
             paint.textSize = 16f
@@ -171,13 +171,12 @@ object DebtStatementGenerator {
                     
                     // Amount
                     val amtSign = if (amount >= 0) "+" else "-"
-                    val amtValue = abs(amount / 100.0)
-                    val amtText = "$amtSign$currency ${String.format(Locale.getDefault(), "%.2f", amtValue)}"
+                    val amtText = "$amtSign${CurrencyFormatter.formatStandard(amount, currency)}"
                     canvas.drawText(amtText, rowX, textY, paint)
                     rowX += colAmtW
                     
                     // Running Balance
-                    val balText = "$currency ${String.format(Locale.getDefault(), "%.2f", runningBal / 100.0)}"
+                    val balText = CurrencyFormatter.formatStandard(runningBal, currency)
                     canvas.drawText(balText, rowX, textY, paint)
 
                     paint.color = Color.parseColor("#f0f0f0")
