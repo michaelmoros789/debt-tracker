@@ -441,39 +441,36 @@ fun MainScreen(
                     }
                 }
             } else {
-                // Table View Header
-                Surface(
-                    tonalElevation = 2.dp,
-                    shadowElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
+                // Table View Header - Now transparent without color fill
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "NAME",
-                            modifier = Modifier.weight(1f).clickable { viewModel.onHeaderClick(SortField.NAME) },
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (currentSortField == SortField.NAME) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "CONTEXT",
-                            modifier = Modifier.weight(1f).clickable { viewModel.onHeaderClick(SortField.CONTEXT) },
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (currentSortField == SortField.CONTEXT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "BALANCE",
-                            modifier = Modifier.width(100.dp).clickable { viewModel.onHeaderClick(SortField.BALANCE) },
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.End,
-                            color = if (currentSortField == SortField.BALANCE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    HeaderItem(
+                        label = "NAME",
+                        field = SortField.NAME,
+                        currentField = currentSortField,
+                        order = currentSortOrder,
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.onHeaderClick(SortField.NAME) }
+                    )
+                    HeaderItem(
+                        label = "CONTEXT",
+                        field = SortField.CONTEXT,
+                        currentField = currentSortField,
+                        order = currentSortOrder,
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.onHeaderClick(SortField.CONTEXT) }
+                    )
+                    HeaderItem(
+                        label = "BALANCE",
+                        field = SortField.BALANCE,
+                        currentField = currentSortField,
+                        order = currentSortOrder,
+                        modifier = Modifier.width(100.dp),
+                        textAlign = TextAlign.End,
+                        onClick = { viewModel.onHeaderClick(SortField.BALANCE) }
+                    )
                 }
                 
                 if (filteredPeople == null) {
@@ -518,6 +515,41 @@ fun MainScreen(
                 },
                 onCancel = { showBottomSheet = false },
                 existingPeople = peopleWithBalances?.map { it.debt.name } ?: emptyList()
+            )
+        }
+    }
+}
+
+@Composable
+fun HeaderItem(
+    label: String,
+    field: SortField,
+    currentField: SortField?,
+    order: SortOrder,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+    onClick: () -> Unit
+) {
+    val isSelected = currentField == field && order != SortOrder.NONE
+    
+    Row(
+        modifier = modifier.clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (textAlign == TextAlign.End) Arrangement.End else Arrangement.Start
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = textAlign
+        )
+        if (isSelected) {
+            Icon(
+                imageVector = if (order == SortOrder.ASCENDING) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -673,5 +705,22 @@ fun AddPersonSheetContent(
             ) { Text("ADD") }
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+/**
+ * Professional Amount Formatter for MVP.
+ * Prevents multi-line breakage by using compact notation (k, M, B) for large numbers.
+ */
+private fun formatAmount(balanceCents: Long, currencySymbol: String): String {
+    if (balanceCents == 0L) return "Settled"
+    
+    val absAmount = abs(balanceCents / 100.0)
+    
+    return when {
+        absAmount >= 1_000_000_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.1fB", absAmount / 1_000_000_000.0)}"
+        absAmount >= 1_000_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.1fM", absAmount / 1_000_000.0)}"
+        absAmount >= 100_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.0fk", absAmount / 1_000.0)}"
+        else -> "$currencySymbol ${String.format(Locale.getDefault(), "%,.2f", absAmount)}"
     }
 }
