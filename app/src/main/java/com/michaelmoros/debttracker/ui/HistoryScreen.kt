@@ -87,13 +87,10 @@ fun HistoryScreen(
     val filteredTransactions = remember(transactions, searchQuery) {
         if (searchQuery.isBlank()) transactions
         else {
-            // Normalize query: remove commas and currency symbols for better numeric matching
             val normalizedQuery = searchQuery.replace(",", "").replace(currencySymbol, "").trim()
-            
             transactions.filter {
                 val amountStr = String.format(Locale.getDefault(), "%.2f", abs(it.amount) / 100.0)
-                val dateStr = it.date.toFormattedDate() // Use the UTC formatter
-                
+                val dateStr = it.date.toFormattedDate()
                 it.description.contains(searchQuery, ignoreCase = true) ||
                 it.method.contains(searchQuery, ignoreCase = true) ||
                 it.referenceNumber?.contains(searchQuery, ignoreCase = true) == true ||
@@ -125,7 +122,6 @@ fun HistoryScreen(
                         "\"$date\",\"$escapedDesc\",\"${tx.method}\",$displayAmount"
                     }
                     val csvContent = (listOf(csvHeader) + csvLines).joinToString("\n")
-
                     context.contentResolver.openOutputStream(it)?.use { outputStream ->
                         outputStream.write(csvContent.toByteArray())
                     }
@@ -155,7 +151,6 @@ fun HistoryScreen(
                         jsonArray.put(obj)
                     }
                     val jsonContent = jsonArray.toString(4)
-
                     context.contentResolver.openOutputStream(it)?.use { outputStream ->
                         outputStream.write(jsonContent.toByteArray())
                     }
@@ -304,23 +299,17 @@ fun HistoryScreen(
                                                 val sortedTxs = transactions.sortedBy { it.date }
                                                 val latestTx = sortedTxs.last()
                                                 val previousBalance = sortedTxs.dropLast(1).sumOf { it.amount }
-                                                
                                                 val format = DecimalFormat("#,###.##")
                                                 val prevBalStr = format.format(abs(previousBalance) / 100.0)
                                                 val latestAmtStr = format.format(abs(latestTx.amount) / 100.0)
                                                 val newBalStr = format.format(abs(previousBalance + latestTx.amount) / 100.0)
-                                                
                                                 val op = if (previousBalance >= 0) {
-                                                    // Current state: They owe me or settled
                                                     if (latestTx.amount > 0) "+" else "-"
                                                 } else {
-                                                    // Current state: I owe them
                                                     if (latestTx.amount < 0) "+" else "-"
                                                 }
-                                                
                                                 val trail = "$prevBalStr\n\n$op$latestAmtStr ${latestTx.description}\n\n$newBalStr"
                                                 clipboardManager.setText(AnnotatedString(trail))
-                                                // Removed redundant notification because Android OS shows "Copied to clipboard"
                                             },
                                             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) }
                                         )
@@ -590,7 +579,6 @@ private fun ChangeCategoryDialog(
 ) {
     var selectedCategory by remember { mutableStateOf(currentCategory) }
     var expanded by remember { mutableStateOf(false) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Change Category") },
@@ -602,7 +590,6 @@ private fun ChangeCategoryDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedCard(
                         onClick = { expanded = true },
@@ -618,7 +605,6 @@ private fun ChangeCategoryDialog(
                             Icon(Icons.Default.ArrowDropDown, null)
                         }
                     }
-
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
@@ -668,9 +654,7 @@ private fun ExportSheetContent(
     onGenerateSinceLastSettled: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 32.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -690,9 +674,7 @@ private fun ExportSheetContent(
                 Icon(Icons.Default.Close, contentDescription = "Close")
             }
         }
-
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
-
         Text(
             text = "DATA FILES",
             style = MaterialTheme.typography.labelMedium,
@@ -700,47 +682,19 @@ private fun ExportSheetContent(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = 24.dp, top = 20.dp, end = 24.dp, bottom = 8.dp)
         )
-
         ListItem(
-            headlineContent = { 
-                Text(
-                    "Export as CSV", 
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                ) 
-            },
-            supportingContent = { 
-                Text(
-                    "Table format for Excel or Google Sheets",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Normal
-                ) 
-            },
+            headlineContent = { Text("Export as CSV", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium) },
+            supportingContent = { Text("Table format for Excel or Google Sheets", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal) },
             leadingContent = { Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.primary) },
             modifier = Modifier.clickable { onExportCsv() }
         )
-
         ListItem(
-            headlineContent = { 
-                Text(
-                    "Export as JSON",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                ) 
-            },
-            supportingContent = { 
-                Text(
-                    "Raw data for developers or backup",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Normal
-                ) 
-            },
+            headlineContent = { Text("Export as JSON", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium) },
+            supportingContent = { Text("Raw data for developers or backup", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal) },
             leadingContent = { Icon(Icons.Default.Code, null, tint = MaterialTheme.colorScheme.primary) },
             modifier = Modifier.clickable { onExportJson() }
         )
-
         Spacer(modifier = Modifier.height(16.dp))
-
         Text(
             text = "VISUAL STATEMENTS",
             style = MaterialTheme.typography.labelMedium,
@@ -748,41 +702,15 @@ private fun ExportSheetContent(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = 24.dp, top = 8.dp, end = 24.dp, bottom = 8.dp)
         )
-
         ListItem(
-            headlineContent = { 
-                Text(
-                    "Full History",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                ) 
-            },
-            supportingContent = { 
-                Text(
-                    "Export every recorded transaction.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Normal
-                ) 
-            },
+            headlineContent = { Text("Full History", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium) },
+            supportingContent = { Text("Export every recorded transaction.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal) },
             leadingContent = { Icon(Icons.Outlined.History, null, tint = MaterialTheme.colorScheme.primary) },
             modifier = Modifier.clickable { onGenerateFullHistory() }
         )
-
         ListItem(
-            headlineContent = { 
-                Text(
-                    "Since Last Settled",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                ) 
-            },
-            supportingContent = { 
-                Text(
-                    "Focus only on the current active debt cycle.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Normal
-                ) 
-            },
+            headlineContent = { Text("Since Last Settled", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium) },
+            supportingContent = { Text("Focus only on the current active debt cycle.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Normal) },
             leadingContent = { Icon(Icons.Outlined.Update, null, tint = MaterialTheme.colorScheme.primary) },
             modifier = Modifier.clickable { onGenerateSinceLastSettled() }
         )
@@ -793,19 +721,16 @@ private fun getTransactionsSinceLastSettled(transactions: List<TransactionEntity
     val sorted = transactions.sortedBy { it.date }
     var lastZeroIndex = -1
     var runningBalance = 0L
-    
     for (i in sorted.indices) {
         runningBalance += sorted[i].amount
         if (runningBalance == 0L) {
             lastZeroIndex = i
         }
     }
-    
-    // Return transactions after the last time balance hit zero
     return if (lastZeroIndex == -1) {
-        sorted // Never hit zero
+        sorted
     } else if (lastZeroIndex == sorted.lastIndex) {
-        listOf(sorted.last()) // Zero is the latest, just show the last one (settled)
+        listOf(sorted.last())
     } else {
         sorted.subList(lastZeroIndex + 1, sorted.size)
     }
@@ -819,7 +744,6 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
         else -> if (transactions.isNotEmpty()) Color(0xFF2E7D32) else Color.Gray
     }
     val lastActivity = transactions.maxByOrNull { it.date }?.date ?: 0L
-
     Card(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         shape = RoundedCornerShape(20.dp),
@@ -838,12 +762,7 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
                         transactions.isNotEmpty() -> "All settled"
                         else -> "No transactions yet"
                     }
-                    Text(
-                        text = statusText,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = themeColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text(text = statusText, style = MaterialTheme.typography.labelMedium, color = themeColor, fontWeight = FontWeight.SemiBold)
                     Text(
                         text = if (balance == 0L && transactions.isNotEmpty()) "Paid" 
                                else CurrencyFormatter.formatStandard(balance, currencySymbol),
@@ -853,25 +772,18 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
                     )
                 }
             }
-
             if (transactions.isNotEmpty()) {
                 val totalLent = transactions.filter { it.amount > 0 }.sumOf { it.amount }
                 val totalBorrowed = transactions.filter { it.amount < 0 }.sumOf { it.amount }
-                
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(modifier = Modifier.alpha(0.1f))
                 Spacer(modifier = Modifier.height(12.dp))
-                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Relationship Volume",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
+                    Text(text = "Relationship Volume", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "↑${CurrencyFormatter.formatAmount(totalLent, currencySymbol, showSettled = false)}",
@@ -888,17 +800,9 @@ fun BalanceCard(name: String, balance: Long, transactions: List<TransactionEntit
                         )
                     }
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.QueryStats, contentDescription = null, tint = themeColor, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("Last activity recorded ", style = MaterialTheme.typography.bodyMedium)
@@ -918,87 +822,39 @@ fun TransactionItem(
     onClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { showMenu = true }
-                )
+                detectTapGestures(onTap = { onClick() }, onLongPress = { showMenu = true })
             },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Box {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 val isOwedToMe = transaction.amount > 0
                 val icon = if (isOwedToMe) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward
                 val iconColor = if (isOwedToMe) Color(0xFF2E7D32) else Color(0xFFD32F2F)
-
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = iconColor.copy(alpha = 0.1f),
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))
-                    }
+                Surface(shape = MaterialTheme.shapes.small, color = iconColor.copy(alpha = 0.1f), modifier = Modifier.size(40.dp)) {
+                    Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp)) }
                 }
-
                 Spacer(modifier = Modifier.width(16.dp))
-
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        transaction.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        "${transaction.date.toFormattedDate()} • ${transaction.method}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(transaction.description, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${transaction.date.toFormattedDate()} • ${transaction.method}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     transaction.referenceNumber?.let {
                         if (it.isNotEmpty()) {
-                            Text(
-                                "Ref: $it",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Text("Ref: $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
-
                 val displayAmount = String.format("%,.2f", abs(transaction.amount) / 100.0)
-                Text(
-                    "$currencySymbol$displayAmount",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = iconColor
-                )
+                Text("$currencySymbol$displayAmount", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = iconColor)
             }
-
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Delete Transaction") },
-                    onClick = {
-                        onDelete()
-                        showMenu = false
-                    },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) }
-                )
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(text = { Text("Delete Transaction") }, onClick = { onDelete(); showMenu = false }, leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red) })
             }
         }
     }
@@ -1018,12 +874,10 @@ fun AddTransactionContent(
     var method by remember { mutableStateOf("Cash") }
     var reference by remember { mutableStateOf("") }
     var isPositive by remember { mutableStateOf(true) }
-
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis(),
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                // Return true only if the date is today or in the past (UTC)
                 val todayUtc = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
                     set(Calendar.HOUR_OF_DAY, 23)
                     set(Calendar.MINUTE, 59)
@@ -1032,19 +886,15 @@ fun AddTransactionContent(
                 }.timeInMillis
                 return utcTimeMillis <= todayUtc
             }
-
             override fun isSelectableYear(year: Int): Boolean {
                 return year <= Calendar.getInstance().get(Calendar.YEAR)
             }
         }
     )
     var showDatePicker by remember { mutableStateOf(false) }
-
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
-
     val methods = listOf("Cash", "E-wallet", "Bank Transfer", "Debt Offset")
-
     val lentLabel = when {
         currentBalance < 0 -> "Repay"
         currentBalance > 0 -> "Lend More"
@@ -1055,84 +905,29 @@ fun AddTransactionContent(
         currentBalance > 0 -> "Received"
         else -> "Borrowed"
     }
-
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("CANCEL")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+            confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("CANCEL") } }
+        ) { DatePicker(state = datePickerState) }
     }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
-            .navigationBarsPadding()
-            .imePadding()
-            .verticalScroll(scrollState) // FIX: Enable scrolling when keyboard squashes content
-    ) {
-        Text(
-            "New Transaction",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            "Recording for $personName",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
+    Column(modifier = Modifier.fillMaxWidth().padding(24.dp).navigationBarsPadding().imePadding().verticalScroll(scrollState)) {
+        Text("New Transaction", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Recording for $personName", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(24.dp))
-
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            SegmentedButton(
-                selected = isPositive,
-                onClick = { isPositive = true },
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                icon = { Icon(Icons.Default.ArrowUpward, null) }
-            ) {
-                Text(lentLabel)
-            }
-            SegmentedButton(
-                selected = !isPositive,
-                onClick = { isPositive = false },
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                icon = { Icon(Icons.Default.ArrowDownward, null) }
-            ) {
-                Text(borrowedLabel)
-            }
+            SegmentedButton(selected = isPositive, onClick = { isPositive = true }, shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2), icon = { Icon(Icons.Default.ArrowUpward, null) }) { Text(lentLabel) }
+            SegmentedButton(selected = !isPositive, onClick = { isPositive = false }, shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2), icon = { Icon(Icons.Default.ArrowDownward, null) }) { Text(borrowedLabel) }
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
         OutlinedTextField(
             value = amount,
             onValueChange = { input ->
-                // Smart Currency Validation:
-                // 1. Prevents leading zeros (unless it's "0.")
-                // 2. Limit to 2 decimal places
-                // 3. Cap at 999,999,999.99
                 val regex = Regex("^\\d*(\\.\\d{0,2})?$")
-                
                 var processedInput = input
-                if (input.length > 1 && input.startsWith("0") && input[1] != '.') {
-                    processedInput = input.substring(1)
-                }
-
-                if (processedInput.isEmpty() || (processedInput.matches(regex) && (processedInput.toDoubleOrNull() ?: 0.0) <= 999999999.99)) {
-                    amount = processedInput
-                }
+                if (input.length > 1 && input.startsWith("0") && input[1] != '.') { processedInput = input.substring(1) }
+                if (processedInput.isEmpty() || (processedInput.matches(regex) && (processedInput.toDoubleOrNull() ?: 0.0) <= 999999999.99)) { amount = processedInput }
             },
             label = { Text("Amount") },
             prefix = { Text(currencySymbol) },
@@ -1141,15 +936,9 @@ fun AddTransactionContent(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
             singleLine = true,
-            supportingText = {
-                if (amount.isNotEmpty() && (amount.toDoubleOrNull() ?: 0.0) > 0) {
-                    Text("Maximum allowed: 999,999,999.99", style = MaterialTheme.typography.labelSmall)
-                }
-            }
+            supportingText = { if (amount.isNotEmpty() && (amount.toDoubleOrNull() ?: 0.0) > 0) { Text("Maximum allowed: 999,999,999.99", style = MaterialTheme.typography.labelSmall) } }
         )
-
         Spacer(modifier = Modifier.height(12.dp))
-
         OutlinedTextField(
             value = description,
             onValueChange = { if (it.length <= 50) description = it },
@@ -1159,41 +948,20 @@ fun AddTransactionContent(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-            supportingText = {
-                Text(
-                    text = "${description.length} / 50",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.End,
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
+            supportingText = { Text(text = "${description.length} / 50", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End, style = MaterialTheme.typography.labelSmall) }
         )
-
         Spacer(modifier = Modifier.height(12.dp))
-
         OutlinedTextField(
             value = datePickerState.selectedDateMillis?.toFormattedDate() ?: "Select Date",
             onValueChange = {},
             readOnly = true,
             label = { Text("Transaction Date") },
-            trailingIcon = {
-                IconButton(onClick = { showDatePicker = true }) {
-                    Icon(Icons.Default.DateRange, contentDescription = "Select Date")
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showDatePicker = true }
+            trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.DateRange, contentDescription = "Select Date") } },
+            modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true }
         )
-
         Spacer(modifier = Modifier.height(12.dp))
-
         var expanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = method,
                 onValueChange = {},
@@ -1202,142 +970,86 @@ fun AddTransactionContent(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth().testTag("transaction_method_field")
             )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 methods.forEach { selection ->
-                    DropdownMenuItem(
-                        text = { Text(selection) },
-                        onClick = {
-                            method = selection
-                            expanded = false
-                        },
-                        modifier = Modifier.testTag("method_option_$selection")
-                    )
+                    DropdownMenuItem(text = { Text(selection) }, onClick = { method = selection; expanded = false }, modifier = Modifier.testTag("method_option_$selection"))
                 }
             }
         }
-
         if (method == "E-wallet" || method == "Bank Transfer") {
             Spacer(modifier = Modifier.height(12.dp))
-            
             val hintText = when (method) {
                 "E-wallet" -> "Tip: Prefix with the e-wallet provider (e.g., e-wallet-A-xxx) to make your search more efficient later."
                 "Bank Transfer" -> "Tip: Prefix with the bank name (e.g., bank-name-xxx) for cleaner and more organized historical records."
                 else -> null
             }
-
             OutlinedTextField(
                 value = reference,
                 onValueChange = { reference = it },
                 label = { Text("Reference Number (Optional)") },
                 modifier = Modifier.fillMaxWidth().testTag("transaction_reference_field"),
                 singleLine = true,
-                supportingText = hintText?.let { 
-                    { 
-                        Text(
-                            text = it,
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) 
-                    } 
-                },
+                supportingText = hintText?.let { { Text(text = it, modifier = Modifier.padding(top = 4.dp)) } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
             )
         }
-
         Spacer(modifier = Modifier.height(32.dp))
-
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onCancel) {
-                Text("CANCEL")
-            }
+            TextButton(onClick = onCancel) { Text("CANCEL") }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
                     val amt = amount.toDoubleOrNull() ?: 0.0
                     val selectedDate = datePickerState.selectedDateMillis ?: System.currentTimeMillis()
-                    if (amt > 0 && description.isNotEmpty()) {
-                        onAdd(amt, description, method, reference.ifEmpty { null }, isPositive, selectedDate)
-                    }
+                    if (amt > 0 && description.isNotEmpty()) { onAdd(amt, description, method, reference.ifEmpty { null }, isPositive, selectedDate) }
                 },
                 enabled = amount.isNotEmpty() && (amount.toDoubleOrNull() ?: 0.0) > 0 && description.isNotEmpty(),
                 modifier = Modifier.testTag("save_transaction_button")
-            ) {
-                Text("SAVE TRANSACTION")
-            }
+            ) { Text("SAVE TRANSACTION") }
         }
     }
 }
 
-/**
- * Visual Transformation that adds thousand separators (commas) as the user types.
- * It handles decimal points correctly and maps the cursor position accurately.
- */
 class CurrencyVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val input = text.text
         if (input.isEmpty()) return TransformedText(text, OffsetMapping.Identity)
-
-        // Split by decimal point to handle integer part separately
         val parts = input.split(".")
         val integerPart = parts[0]
         val decimalPart = if (parts.size > 1) "." + parts[1] else ""
-
-        // Add commas to integer part
         val formattedInteger = if (integerPart.isNotEmpty()) {
             val formatter = DecimalFormat("#,###")
             formatter.format(integerPart.toLong())
-        } else {
-            ""
-        }
-
+        } else { "" }
         val out = formattedInteger + decimalPart
-        
         val offsetMapping = object : OffsetMapping {
             override fun originalToTransformed(offset: Int): Int {
                 if (offset <= 0) return offset
-                
-                // Count how many commas were added before the current cursor position
                 var commaCount = 0
                 var currentOriginalIndex = 0
-                
-                // Check each character in the integer part
                 for (i in integerPart.indices) {
                     if (currentOriginalIndex >= offset) break
-                    
-                    // A comma is inserted before this digit if its distance from the END of the integer part is a multiple of 3
                     val distanceToRight = integerPart.length - i
-                    if (distanceToRight > 0 && distanceToRight % 3 == 0 && i > 0) {
-                        commaCount++
-                    }
+                    if (distanceToRight > 0 && distanceToRight % 3 == 0 && i > 0) { commaCount++ }
                     currentOriginalIndex++
                 }
-                
                 return offset + commaCount
             }
-
             override fun transformedToOriginal(offset: Int): Int {
                 if (offset <= 0) return offset
-                
-                // Count how many commas are actually present before the transformed offset
                 var commaCount = 0
-                for (i in 0 until offset.coerceAtMost(out.length)) {
-                    if (out[i] == ',') commaCount++
-                }
-                
+                for (i in 0 until offset.coerceAtMost(out.length)) { if (out[i] == ',') commaCount++ }
                 return (offset - commaCount).coerceAtLeast(0)
             }
         }
-
         return TransformedText(AnnotatedString(out), offsetMapping)
     }
 }
 
 fun Long.toFormattedDate(): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    sdf.timeZone = TimeZone.getTimeZone("UTC") // FORCE UTC
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
     return sdf.format(Date(this))
 }
 

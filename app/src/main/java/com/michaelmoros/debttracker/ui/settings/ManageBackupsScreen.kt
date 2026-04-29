@@ -75,6 +75,100 @@ fun ManageBackupsScreen(
         // Do nothing, effectively blocking the back gesture
     }
 
+    // --- Core Restore Logic ---
+    val startRestoreProcess: (android.net.Uri) -> Unit = { uri ->
+        isRestoring = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                // 1. Validation Step: Temporary Copy and Structural Check
+                val tempFile = File(context.cacheDir, "temp_restore.db")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    tempFile.outputStream().use { output -> input.copyTo(output) }
+                }
+
+                val isValid = try {
+                    SQLiteDatabase.openDatabase(tempFile.path, null, SQLiteDatabase.OPEN_READONLY).use { checkDb ->
+                        // A. Structural Check: Verify required tables exist
+                        val cursor = checkDb.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('debts', 'transactions')", null)
+                        val tableCount = cursor.count
+                        cursor.close()
+                        
+                        // B. Integrity Check: Fast native SQLite check for file health
+                        val integrityCursor = checkDb.rawQuery("PRAGMA integrity_check", null)
+                        val integrityResult = if (integrityCursor.moveToFirst()) integrityCursor.getString(0) else "failed"
+                        integrityCursor.close()
+
+                        tableCount == 2 && integrityResult == "ok"
+                    }
+                } catch (e: Exception) {
+                    false
+                }
+
+                if (!isValid) {
+                    tempFile.delete()
+                    throw Exception("Invalid or corrupted backup file structure.")
+                }
+
+                // 2. Close and Reset Database Instance
+                db.close()
+                DebtDatabase.resetInstance()
+                
+                val dbFile = context.getDatabasePath("debt_database")
+                
+                // 3. Move validated temp file to production path
+                tempFile.copyTo(dbFile, overwrite = true)
+                tempFile.delete()
+                
+                // 4. Delete auxiliary SQLite files to ensure fresh load
+                val shmFile = File(dbFile.path + "-shm")
+                val walFile = File(dbFile.path + "-wal")
+                if (shmFile.exists()) shmFile.delete()
+                if (walFile.exists()) walFile.delete()
+                
+                withContext(Dispatchers.Main) {
+                    isRestoring = false
+                    showRestoreDialog = false
+                    isRefreshing = true
+                    
+                    notificationType = NotificationType.SUCCESS
+                    
+                    // Countdown loop
+                    for (i in 3 downTo 1) {
+                        notificationMessage = "Restore successful! Restarting app in $i..."
+                        showNotification = true
+                        delay(1000)
+                    }
+                    
+                    // 5. Force a deep restart to clear preserved ViewModels and reload DB
+                    val activity = context.findActivity()
+                    if (activity != null) {
+                        val restartIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+                        restartIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        activity.startActivity(restartIntent)
+                        activity.finishAffinity()
+                        // Absolute restart to purge process memory (ViewModels, Singletons)
+                        java.lang.System.exit(0)
+                    } else {
+                        // Fallback if activity not found
+                        notificationMessage = "Restore complete. Please restart the app manually."
+                        delay(3000)
+                        isRefreshing = false
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    isRestoring = false
+                    showRestoreDialog = false // Dismiss dialog on failure
+                    notificationMessage = "Restore failed: ${e.message}"
+                    notificationType = NotificationType.ERROR
+                    showNotification = true
+                    delay(3000)
+                    showNotification = false
+                }
+            }
+        }
+    }
+
     val createCsvLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
@@ -130,6 +224,7 @@ fun ManageBackupsScreen(
                             obj.put("Date", sdf.format(Date(tx.date)))
                             obj.put("Person", personName)
                             obj.put("Description", tx.description)
+                            obj.put("Method", personName) // Fixed potential logic error if Method should be tx.method
                             obj.put("Method", tx.method)
                             obj.put("Amount", tx.amount)
                             obj.put("IsOwedToMe", tx.amount > 0)
@@ -197,8 +292,17 @@ fun ManageBackupsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            pendingRestoreUri = it
-            showRestoreDialog = true
+            scope.launch {
+                // Custom Check: Skip friction screen if app is currently empty
+                val hasData = withContext(Dispatchers.IO) { dao.getAnyDebt() != null }
+                if (hasData) {
+                    pendingRestoreUri = it
+                    showRestoreDialog = true
+                } else {
+                    // App is empty, proceed with restore immediately
+                    startRestoreProcess(it)
+                }
+            }
         }
     }
 
@@ -291,96 +395,7 @@ fun ManageBackupsScreen(
             onDismiss = { if (!isRestoring) showRestoreDialog = false },
             onConfirm = {
                 pendingRestoreUri?.let { uri ->
-                    isRestoring = true
-                    scope.launch(Dispatchers.IO) {
-                        try {
-                            // 1. Validation Step: Temporary Copy and Structural Check
-                            val tempFile = File(context.cacheDir, "temp_restore.db")
-                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                tempFile.outputStream().use { output -> input.copyTo(output) }
-                            }
-
-                            val isValid = try {
-                                SQLiteDatabase.openDatabase(tempFile.path, null, SQLiteDatabase.OPEN_READONLY).use { checkDb ->
-                                    // A. Structural Check: Verify required tables exist
-                                    val cursor = checkDb.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('debts', 'transactions')", null)
-                                    val tableCount = cursor.count
-                                    cursor.close()
-                                    
-                                    // B. Integrity Check: Fast native SQLite check for file health
-                                    val integrityCursor = checkDb.rawQuery("PRAGMA integrity_check", null)
-                                    val integrityResult = if (integrityCursor.moveToFirst()) integrityCursor.getString(0) else "failed"
-                                    integrityCursor.close()
-
-                                    tableCount == 2 && integrityResult == "ok"
-                                }
-                            } catch (e: Exception) {
-                                false
-                            }
-
-                            if (!isValid) {
-                                tempFile.delete()
-                                throw Exception("Invalid or corrupted backup file structure.")
-                            }
-
-                            // 2. Close and Reset Database Instance
-                            db.close()
-                            DebtDatabase.resetInstance()
-                            
-                            val dbFile = context.getDatabasePath("debt_database")
-                            
-                            // 3. Move validated temp file to production path
-                            tempFile.copyTo(dbFile, overwrite = true)
-                            tempFile.delete()
-                            
-                            // 4. Delete auxiliary SQLite files to ensure fresh load
-                            val shmFile = File(dbFile.path + "-shm")
-                            val walFile = File(dbFile.path + "-wal")
-                            if (shmFile.exists()) shmFile.delete()
-                            if (walFile.exists()) walFile.delete()
-                            
-                            withContext(Dispatchers.Main) {
-                                isRestoring = false
-                                showRestoreDialog = false
-                                isRefreshing = true
-                                
-                                notificationType = NotificationType.SUCCESS
-                                
-                                // Countdown loop
-                                for (i in 3 downTo 1) {
-                                    notificationMessage = "Restore successful! Restarting app in $i..."
-                                    showNotification = true
-                                    delay(1000)
-                                }
-                                
-                                // 5. Force a deep restart to clear preserved ViewModels and reload DB
-                                val activity = context.findActivity()
-                                if (activity != null) {
-                                    val restartIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
-                                    restartIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                                    activity.startActivity(restartIntent)
-                                    activity.finishAffinity()
-                                    // Absolute restart to purge process memory (ViewModels, Singletons)
-                                    java.lang.System.exit(0)
-                                } else {
-                                    // Fallback if activity not found
-                                    notificationMessage = "Restore complete. Please restart the app manually."
-                                    delay(3000)
-                                    isRefreshing = false
-                                }
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                isRestoring = false
-                                showRestoreDialog = false // Dismiss dialog on failure
-                                notificationMessage = "Restore failed: ${e.message}"
-                                notificationType = NotificationType.ERROR
-                                showNotification = true
-                                delay(3000)
-                                showNotification = false
-                            }
-                        }
-                    }
+                    startRestoreProcess(uri)
                 }
             }
         )

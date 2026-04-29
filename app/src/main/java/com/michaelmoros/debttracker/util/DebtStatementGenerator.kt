@@ -18,15 +18,20 @@ import kotlin.math.abs
 
 object DebtStatementGenerator {
 
-    private const val W = 1100 // Width to accommodate columns
-    private const val TOP_PAD = 44f
-    private const val SIDE_PAD = 40f
-    private const val TABLE_TOP = 170f
-    private const val HEADER_H = 28f
-    private const val ROW_H = 34f
-    private const val FOOTER_PAD_TOP = 22f
-    private const val FOOTER_LINE_H = 16f
-    private const val FOOTER_BOTTOM_PAD = 22f
+    // Scale factor to improve resolution (2x or 3x for high-quality printing/viewing)
+    private const val SCALE = 2.5f
+    
+    private const val BASE_W = 1100
+    private val W = (BASE_W * SCALE).toInt()
+    
+    private val TOP_PAD = 44f * SCALE
+    private val SIDE_PAD = 40f * SCALE
+    private val TABLE_TOP = 170f * SCALE
+    private val HEADER_H = 28f * SCALE
+    private val ROW_H = 34f * SCALE
+    private val FOOTER_PAD_TOP = 22f * SCALE
+    private val FOOTER_LINE_H = 16f * SCALE
+    private val FOOTER_BOTTOM_PAD = 22f * SCALE
 
     suspend fun generateAndSave(
         context: Context,
@@ -49,9 +54,8 @@ object DebtStatementGenerator {
             val remaining = if (computedRows.isNotEmpty()) computedRows.last().third else 0L
             val generatedAt = Date()
             
-            // Use all transactions for dynamic height
             val rowsToDisplay = computedRows
-            val rowCount = rowsToDisplay.size.coerceAtLeast(1) // At least 1 for header/empty state
+            val rowCount = rowsToDisplay.size.coerceAtLeast(1) 
             
             val tableHeight = HEADER_H + rowCount * ROW_H
             val totalH = (TABLE_TOP + tableHeight + FOOTER_PAD_TOP + FOOTER_LINE_H + FOOTER_BOTTOM_PAD).toInt()
@@ -62,7 +66,10 @@ object DebtStatementGenerator {
             // Background
             canvas.drawColor(Color.WHITE)
             
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                isFilterBitmap = true
+                isDither = true
+            }
             
             // Formatters
             val dtf = SimpleDateFormat("MMMM d, yyyy (EEEE) hh:mm a", Locale.getDefault())
@@ -70,21 +77,21 @@ object DebtStatementGenerator {
 
             /* 1. Header */
             paint.color = Color.parseColor("#111111")
-            paint.textSize = 22f
+            paint.textSize = 22f * SCALE
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             canvas.drawText("Transaction History", SIDE_PAD, TOP_PAD, paint)
 
-            paint.textSize = 14f
+            paint.textSize = 14f * SCALE
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             paint.color = Color.parseColor("#333333")
-            canvas.drawText("Person: ${debt.name}", SIDE_PAD, TOP_PAD + 28, paint)
-            canvas.drawText("Context: ${debt.context}", SIDE_PAD, TOP_PAD + 48, paint)
-            canvas.drawText("As of: ${dtf.format(generatedAt)}", SIDE_PAD, TOP_PAD + 68, paint)
+            canvas.drawText("Person: ${debt.name}", SIDE_PAD, TOP_PAD + (28 * SCALE), paint)
+            canvas.drawText("Context: ${debt.context}", SIDE_PAD, TOP_PAD + (48 * SCALE), paint)
+            canvas.drawText("As of: ${dtf.format(generatedAt)}", SIDE_PAD, TOP_PAD + (68 * SCALE), paint)
 
             /* 2. Divider */
             paint.color = Color.parseColor("#e6e6e6")
-            paint.strokeWidth = 1f
-            canvas.drawLine(SIDE_PAD, TOP_PAD + 92, W - SIDE_PAD, TOP_PAD + 92, paint)
+            paint.strokeWidth = 1f * SCALE
+            canvas.drawLine(SIDE_PAD, TOP_PAD + (92 * SCALE), W - SIDE_PAD, TOP_PAD + (92 * SCALE), paint)
 
             /* 3. Summary (Right aligned) */
             val currency = currencySymbol
@@ -94,22 +101,22 @@ object DebtStatementGenerator {
                 remaining < 0 -> "I owe you: $summaryAmount"
                 else -> "Settled: $currency 0.00"
             }
-            paint.textSize = 16f
+            paint.textSize = 16f * SCALE
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             paint.color = Color.parseColor("#111111")
             val summaryW = paint.measureText(summaryText)
-            canvas.drawText(summaryText, W - SIDE_PAD - summaryW, TOP_PAD + 68, paint)
+            canvas.drawText(summaryText, W - SIDE_PAD - summaryW, TOP_PAD + (68 * SCALE), paint)
 
             /* 4. Table Header */
-            val colDateW = 110f
-            val colMethodW = 130f
-            val colRefW = 180f
-            val colAmtW = 160f
-            val colBalW = 160f
+            val colDateW = 110f * SCALE
+            val colMethodW = 130f * SCALE
+            val colRefW = 180f * SCALE
+            val colAmtW = 160f * SCALE
+            val colBalW = 160f * SCALE
             val colDescW = W - SIDE_PAD * 2 - colDateW - colMethodW - colRefW - colAmtW - colBalW
 
             paint.typeface = Typeface.MONOSPACE
-            paint.textSize = 14f
+            paint.textSize = 14f * SCALE
             paint.color = Color.parseColor("#666666")
             
             var currentX = SIDE_PAD
@@ -127,27 +134,28 @@ object DebtStatementGenerator {
 
             /* Divider */
             paint.color = Color.parseColor("#e6e6e6")
-            canvas.drawLine(SIDE_PAD, TABLE_TOP + 12, W - SIDE_PAD, TABLE_TOP + 12, paint)
+            paint.strokeWidth = 1f * SCALE
+            canvas.drawLine(SIDE_PAD, TABLE_TOP + (12 * SCALE), W - SIDE_PAD, TABLE_TOP + (12 * SCALE), paint)
 
             /* 5. Rows */
             if (rowsToDisplay.isEmpty()) {
                 paint.color = Color.parseColor("#999999")
                 paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
-                canvas.drawText("No transactions found.", SIDE_PAD, TABLE_TOP + HEADER_H + 6, paint)
+                canvas.drawText("No transactions found.", SIDE_PAD, TABLE_TOP + HEADER_H + (6 * SCALE), paint)
             } else {
                 for (i in rowsToDisplay.indices) {
                     val y = TABLE_TOP + HEADER_H + i * ROW_H
-                    val textY = y + 6
+                    val textY = y + (6 * SCALE)
 
                     if (i % 2 == 1) {
                         paint.color = Color.parseColor("#fafafa")
-                        canvas.drawRect(SIDE_PAD, y - 18, W - SIDE_PAD, y + 16, paint)
+                        canvas.drawRect(SIDE_PAD, y - (18 * SCALE), W - SIDE_PAD, y + (16 * SCALE), paint)
                     }
 
                     val (t, amount, runningBal) = rowsToDisplay[i]
                     paint.color = Color.parseColor("#111111")
                     paint.typeface = Typeface.MONOSPACE
-                    paint.textSize = 14f
+                    paint.textSize = 14f * SCALE
                     
                     var rowX = SIDE_PAD
                     // Date
@@ -155,17 +163,17 @@ object DebtStatementGenerator {
                     rowX += colDateW
                     
                     // Desc
-                    val descText = truncate(paint, t.description, colDescW - 12)
+                    val descText = truncate(paint, t.description, colDescW - (12 * SCALE))
                     canvas.drawText(descText, rowX, textY, paint)
                     rowX += colDescW
                     
                     // Method
-                    val methodText = truncate(paint, t.method, colMethodW - 12)
+                    val methodText = truncate(paint, t.method, colMethodW - (12 * SCALE))
                     canvas.drawText(methodText, rowX, textY, paint)
                     rowX += colMethodW
                     
                     // Reference
-                    val refText = truncate(paint, t.referenceNumber ?: "-", colRefW - 12)
+                    val refText = truncate(paint, t.referenceNumber ?: "-", colRefW - (12 * SCALE))
                     canvas.drawText(refText, rowX, textY, paint)
                     rowX += colRefW
                     
@@ -180,14 +188,15 @@ object DebtStatementGenerator {
                     canvas.drawText(balText, rowX, textY, paint)
 
                     paint.color = Color.parseColor("#f0f0f0")
-                    canvas.drawLine(SIDE_PAD, y + 16, W - SIDE_PAD, y + 16, paint)
+                    paint.strokeWidth = 1f * SCALE
+                    canvas.drawLine(SIDE_PAD, y + (16 * SCALE), W - SIDE_PAD, y + (16 * SCALE), paint)
                 }
             }
 
             /* 6. Footer */
             val footerY = TABLE_TOP + tableHeight + FOOTER_PAD_TOP + FOOTER_LINE_H
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            paint.textSize = 12f
+            paint.textSize = 12f * SCALE
             paint.color = Color.parseColor("#777777")
             canvas.drawText("System-generated for personal tracking.", SIDE_PAD, footerY, paint)
 
@@ -228,6 +237,7 @@ object DebtStatementGenerator {
 
             uri?.let {
                 resolver.openOutputStream(it)?.use { out ->
+                    // PNG is lossless, so 100 quality is default, but it's more efficient for text than JPEG.
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                 }
                 

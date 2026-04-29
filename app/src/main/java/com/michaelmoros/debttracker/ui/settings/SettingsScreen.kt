@@ -107,8 +107,8 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 SettingsItem(
-                    title = "Reset Defaults",
-                    subtitle = "Clear all data and reset categories",
+                    title = "Clear All Data",
+                    subtitle = "Delete all entries, transactions, and custom categories",
                     icon = Icons.Default.DeleteForever,
                     iconColor = MaterialTheme.colorScheme.error,
                     onClick = { showResetDialog = true }
@@ -119,10 +119,10 @@ fun SettingsScreen(
 
     FrictionConfirmDialog(
         show = showResetDialog,
-        title = "Reset All Data?",
-        message = "This will permanently delete all your entries, transactions, and custom categories. This action cannot be undone.",
+        title = "Clear All Data?",
+        message = "This action is equivalent to resetting the app. All people, transaction histories, and custom categories will be PERMANENTLY DELETED. This cannot be undone.",
         requiredPhrase = "reset-everything",
-        confirmButtonText = "RESET EVERYTHING",
+        confirmButtonText = "CLEAR EVERYTHING",
         isDestructive = true,
         onDismiss = { showResetDialog = false },
         onConfirm = {

@@ -92,13 +92,27 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
         _exportNamingConvention.value = convention
     }
 
-    fun resetDefaults(onComplete: (String) -> Unit) {
-        settingsManager.resetToDefaults()
-        _itemSize.value = settingsManager.itemSize
-        _currencySymbol.value = settingsManager.currencySymbol
-        _themeMode.value = settingsManager.themeMode
-        _exportNamingConvention.value = settingsManager.exportNamingConvention
-        onComplete("Settings reset to defaults")
+    fun resetEverything(onComplete: (String) -> Unit) {
+        viewModelScope.launch {
+            // 1. Clear database
+            dao.deleteAllTransactions()
+            dao.deleteAllDebts()
+            dao.deleteAllContexts()
+            
+            // 2. Re-insert default contexts
+            listOf("General", "Work", "Family", "Friends").forEach {
+                dao.insertContext(ContextEntity(it))
+            }
+
+            // 3. Reset settings
+            settingsManager.resetToDefaults()
+            _itemSize.value = settingsManager.itemSize
+            _currencySymbol.value = settingsManager.currencySymbol
+            _themeMode.value = settingsManager.themeMode
+            _exportNamingConvention.value = settingsManager.exportNamingConvention
+            
+            onComplete("App data cleared and settings reset")
+        }
     }
 
     fun getDao() = dao

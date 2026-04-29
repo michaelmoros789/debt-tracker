@@ -199,7 +199,7 @@ fun AppNavigation(viewModel: DebtViewModel) {
                     onNavigateToExportNaming = { navigateTo(Screen.ExportNaming) },
                     onNavigateToAbout = { navigateTo(Screen.About) },
                     onResetDefaults = {
-                        viewModel.resetDefaults { msg -> showNotification(msg, NotificationType.SUCCESS) }
+                        viewModel.resetEverything { msg -> showNotification(msg, NotificationType.SUCCESS) }
                     },
                     onBack = { navigateBack() }
                 )
@@ -705,22 +705,5 @@ fun AddPersonSheetContent(
             ) { Text("ADD") }
         }
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-/**
- * Professional Amount Formatter for MVP.
- * Prevents multi-line breakage by using compact notation (k, M, B) for large numbers.
- */
-private fun formatAmount(balanceCents: Long, currencySymbol: String): String {
-    if (balanceCents == 0L) return "Settled"
-    
-    val absAmount = abs(balanceCents / 100.0)
-    
-    return when {
-        absAmount >= 1_000_000_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.1fB", absAmount / 1_000_000_000.0)}"
-        absAmount >= 1_000_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.1fM", absAmount / 1_000_000.0)}"
-        absAmount >= 100_000 -> "$currencySymbol${String.format(Locale.getDefault(), "%.0fk", absAmount / 1_000.0)}"
-        else -> "$currencySymbol ${String.format(Locale.getDefault(), "%,.2f", absAmount)}"
     }
 }
