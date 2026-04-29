@@ -122,6 +122,7 @@ fun AppNavigation(viewModel: DebtViewModel) {
     val exportNamingConvention by viewModel.exportNamingConvention.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
     val ledgerCount by viewModel.ledgerCount.collectAsState()
+    val ledgerUris by viewModel.ledgerUris.collectAsState()
     
     val context = LocalContext.current
 
@@ -214,6 +215,7 @@ fun AppNavigation(viewModel: DebtViewModel) {
                 )
                 is Screen.Settings -> SettingsScreen(
                     ledgerCount = ledgerCount,
+                    ledgerUris = ledgerUris,
                     onNavigateToDisplay = { navigateTo(Screen.DisplaySettings) },
                     onNavigateToCurrency = { navigateTo(Screen.CurrencySettings) },
                     onNavigateToTheme = { navigateTo(Screen.ThemeSettings) },
@@ -416,12 +418,9 @@ fun MainScreen(
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
                         )
-                        LaunchedEffect(Unit) {
-                            focusRequester.requestFocus()
-                        }
                     },
                     navigationIcon = {
-                        IconButton(onClick = {
+                        IconButton(onClick = { 
                             isSearching = false
                             searchQuery = ""
                         }) {
@@ -431,16 +430,19 @@ fun MainScreen(
                     actions = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                Icon(Icons.Default.Close, contentDescription = "Clear")
                             }
                         }
                     }
                 )
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
             } else {
-                CenterAlignedTopAppBar(
-                    title = { Text("Debt Tracker") },
+                TopAppBar(
+                    title = { Text("Debt Tracker", fontWeight = FontWeight.Bold) },
                     actions = {
-                        if (peopleWithBalances?.isNotEmpty() == true) {
+                        if (peopleWithBalances.isNotEmpty()) {
                             IconButton(onClick = { isSearching = true }) {
                                 Icon(Icons.Default.Search, contentDescription = "Search")
                             }
@@ -453,7 +455,7 @@ fun MainScreen(
             }
         },
         floatingActionButton = {
-            if (peopleWithBalances?.isNotEmpty() == true && !isSearching) {
+            if (peopleWithBalances.isNotEmpty() && !isSearching) {
                 ExtendedFloatingActionButton(
                     onClick = { showBottomSheet = true },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
@@ -465,7 +467,7 @@ fun MainScreen(
         floatingActionButtonPosition = FabPosition.Center
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (peopleWithBalances?.isEmpty() == true) {
+            if (peopleWithBalances.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
                         Icon(Icons.Default.PersonAdd, null, Modifier.size(80.dp), MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
@@ -482,41 +484,43 @@ fun MainScreen(
                     }
                 }
             } else {
-                // Table View Header - Now transparent without color fill
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    tonalElevation = 2.dp,
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    HeaderItem(
-                        label = "NAME",
-                        field = SortField.NAME,
-                        currentField = currentSortField,
-                        order = currentSortOrder,
-                        modifier = Modifier.weight(1f),
-                        onClick = { viewModel.onHeaderClick(SortField.NAME) }
-                    )
-                    HeaderItem(
-                        label = "CONTEXT",
-                        field = SortField.CONTEXT,
-                        currentField = currentSortField,
-                        order = currentSortOrder,
-                        modifier = Modifier.weight(1f),
-                        onClick = { viewModel.onHeaderClick(SortField.CONTEXT) }
-                    )
-                    HeaderItem(
-                        label = "BALANCE",
-                        field = SortField.BALANCE,
-                        currentField = currentSortField,
-                        order = currentSortOrder,
-                        modifier = Modifier.width(100.dp),
-                        textAlign = TextAlign.End,
-                        onClick = { viewModel.onHeaderClick(SortField.BALANCE) }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "NAME",
+                            modifier = Modifier.weight(1f).clickable { viewModel.onHeaderClick(SortField.NAME) },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (currentSortField == SortField.NAME) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "CONTEXT",
+                            modifier = Modifier.weight(1f).clickable { viewModel.onHeaderClick(SortField.CONTEXT) },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (currentSortField == SortField.CONTEXT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "BALANCE",
+                            modifier = Modifier.width(100.dp).clickable { viewModel.onHeaderClick(SortField.BALANCE) },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.End,
+                            color = if (currentSortField == SortField.BALANCE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 
-                if (filteredPeople.isEmpty() && searchQuery.isNotBlank()) {
+                if (filteredPeople.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No matches found.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (searchQuery.isBlank()) "No people added yet." else "No matches found.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(
@@ -551,42 +555,7 @@ fun MainScreen(
                     showBottomSheet = false
                 },
                 onCancel = { showBottomSheet = false },
-                existingPeople = peopleWithBalances?.map { it.debt.name } ?: emptyList()
-            )
-        }
-    }
-}
-
-@Composable
-fun HeaderItem(
-    label: String,
-    field: SortField,
-    currentField: SortField?,
-    order: SortOrder,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Start,
-    onClick: () -> Unit
-) {
-    val isSelected = currentField == field && order != SortOrder.NONE
-    
-    Row(
-        modifier = modifier.clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (textAlign == TextAlign.End) Arrangement.End else Arrangement.Start
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = textAlign
-        )
-        if (isSelected) {
-            Icon(
-                imageVector = if (order == SortOrder.ASCENDING) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
+                existingPeople = peopleWithBalances.map { it.debt.name }
             )
         }
     }
@@ -634,22 +603,17 @@ fun PersonItem(
             )
             val lastDate = person.lastTransactionDate
             if (lastDate != null) {
-                val diff = System.currentTimeMillis() - lastDate
-                val days = diff / (1000 * 60 * 60 * 24)
-                val status = if (days > 30) "Stagnant" else "Active"
-                val statusColor = if (status == "Active") Color(0xFF4CAF50) else Color(0xFFFF9800)
-                
                 Box(
                     modifier = Modifier
                         .padding(top = 4.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(statusColor.copy(alpha = 0.15f))
+                        .background(Color(0xFF4CAF50).copy(alpha = 0.15f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "$status • ${lastDate.toDaysAgo()}",
+                        text = "Active • ${lastDate.toDaysAgo()}",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-                        color = statusColor
+                        color = Color(0xFF4CAF50)
                     )
                 }
             } else {
@@ -727,20 +691,29 @@ fun AddPersonSheetContent(
                 readOnly = true, 
                 label = { Text("Context") }, 
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) }, 
-                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth().testTag("add_person_context_field")
+                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
             )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) { availableContexts.forEach { contextName -> DropdownMenuItem(text = { Text(contextName) }, onClick = { contextStr = contextName; expanded = false }, modifier = Modifier.testTag("context_option_$contextName")) } }
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                availableContexts.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption) },
+                        onClick = {
+                            contextStr = selectionOption
+                            expanded = false
+                        }
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(24.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onCancel, modifier = Modifier.testTag("add_person_cancel_button")) { Text("CANCEL") }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onCancel) { Text("Cancel") }
             Spacer(Modifier.width(8.dp))
             Button(
-                onClick = { if (name.isNotBlank() && !isDuplicate && nameValidationResult == null) onAddPerson(name.trim(), contextStr) }, 
+                onClick = { if (name.isNotBlank() && !isDuplicate && nameValidationResult == null) onAddPerson(name.trim(), contextStr) },
                 enabled = name.isNotBlank() && !isDuplicate && nameValidationResult == null,
-                modifier = Modifier.testTag("add_person_confirm_button")
-            ) { Text("ADD") }
+                modifier = Modifier.testTag("confirm_add_person_button")
+            ) { Text("Add Person") }
         }
-        Spacer(Modifier.height(16.dp))
     }
 }

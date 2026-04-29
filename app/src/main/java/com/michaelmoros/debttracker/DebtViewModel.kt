@@ -38,6 +38,9 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
     private val _ledgerCount = MutableStateFlow(0)
     val ledgerCount = _ledgerCount.asStateFlow()
 
+    private val _ledgerUris = MutableStateFlow<List<Uri>>(emptyList())
+    val ledgerUris = _ledgerUris.asStateFlow()
+
     val contexts = dao.getAllContexts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _searchQuery = MutableStateFlow("")
@@ -66,12 +69,13 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateLedgerCount() {
         viewModelScope.launch {
-            _ledgerCount.value = LedgerManager.countGeneratedLedgers(getApplication())
+            _ledgerUris.value = LedgerManager.getLedgerUris(getApplication())
+            _ledgerCount.value = _ledgerUris.value.size
         }
     }
 
     fun getLedgerUris(): List<Uri> {
-        return LedgerManager.getLedgerUris(getApplication())
+        return _ledgerUris.value
     }
 
     fun purgeLedgersLegacy(uris: List<Uri>): Int {
