@@ -82,7 +82,7 @@ interface DebtDao {
     """)
     fun getDebtById(id: Long): Flow<DebtWithBalance?>
 
-    @Query("SELECT * FROM transactions WHERE debtId = :personId ORDER BY date DESC")
+    @Query("SELECT * FROM transactions WHERE debtId = :personId ORDER BY date DESC, createdAt DESC")
     fun getTransactionsForPerson(personId: Long): Flow<List<TransactionEntity>>
 
     @Query("SELECT * FROM transactions WHERE id = :id")
@@ -107,6 +107,9 @@ interface DebtDao {
 
     @Update
     suspend fun updateDebt(debt: DebtEntity)
+
+    @Update
+    suspend fun updateTransaction(transaction: TransactionEntity)
 
     @Delete
     suspend fun deleteDebt(debt: DebtEntity)
