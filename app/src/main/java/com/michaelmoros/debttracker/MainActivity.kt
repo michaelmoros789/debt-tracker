@@ -4,8 +4,11 @@ import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -49,6 +52,7 @@ import com.michaelmoros.debttracker.ui.settings.*
 import com.michaelmoros.debttracker.ui.theme.MyApplicationTheme
 import com.michaelmoros.debttracker.ui.toDaysAgo
 import com.michaelmoros.debttracker.util.CurrencyFormatter
+import com.michaelmoros.debttracker.util.LedgerManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -117,6 +121,7 @@ fun AppNavigation(viewModel: DebtViewModel) {
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     val exportNamingConvention by viewModel.exportNamingConvention.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val ledgerCount by viewModel.ledgerCount.collectAsState()
     
     val context = LocalContext.current
 
@@ -134,6 +139,23 @@ fun AppNavigation(viewModel: DebtViewModel) {
         if (notificationVisible) {
             delay(3000)
             notificationVisible = false
+        }
+    }
+
+    // Automatically update ledger count when entering settings
+    LaunchedEffect(currentScreen) {
+        if (currentScreen is Screen.Settings) {
+            viewModel.updateLedgerCount()
+        }
+    }
+
+    var pendingDeleteCount by remember { mutableIntStateOf(0) }
+    val deleteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            showNotification("$pendingDeleteCount images deleted", NotificationType.SUCCESS)
+            viewModel.updateLedgerCount()
         }
     }
 
@@ -191,6 +213,7 @@ fun AppNavigation(viewModel: DebtViewModel) {
                     }
                 )
                 is Screen.Settings -> SettingsScreen(
+                    ledgerCount = ledgerCount,
                     onNavigateToDisplay = { navigateTo(Screen.DisplaySettings) },
                     onNavigateToCurrency = { navigateTo(Screen.CurrencySettings) },
                     onNavigateToTheme = { navigateTo(Screen.ThemeSettings) },
@@ -198,6 +221,22 @@ fun AppNavigation(viewModel: DebtViewModel) {
                     onNavigateToManageBackups = { navigateTo(Screen.ManageBackups) },
                     onNavigateToExportNaming = { navigateTo(Screen.ExportNaming) },
                     onNavigateToAbout = { navigateTo(Screen.About) },
+                    onPurgeLedgers = {
+                        val uris = viewModel.getLedgerUris()
+                        if (uris.isEmpty()) {
+                            showNotification("No generated images found", NotificationType.SUCCESS)
+                        } else {
+                            val pendingIntent = LedgerManager.createPurgeRequest(context, uris)
+                            if (pendingIntent != null) {
+                                pendingDeleteCount = uris.size
+                                deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent).build())
+                            } else {
+                                // Fallback for older APIs
+                                val deleted = viewModel.purgeLedgersLegacy(uris)
+                                showNotification("$deleted images deleted", NotificationType.SUCCESS)
+                            }
+                        }
+                    },
                     onResetDefaults = {
                         viewModel.resetEverything { msg -> showNotification(msg, NotificationType.SUCCESS) }
                     },
@@ -273,9 +312,11 @@ fun MainScreen(
 
     val filteredPeople = remember(peopleWithBalances, searchQuery, currencySymbol) {
         val query = searchQuery.trim().lowercase()
-        if (query.isBlank()) peopleWithBalances
+        val people = peopleWithBalances
+        if (people == null) emptyList()
+        else if (query.isBlank()) people
         else {
-            peopleWithBalances?.filter { person ->
+            people.filter { person ->
                 val nameMatch = person.debt.name.contains(query, ignoreCase = true)
                 val contextMatch = person.debt.context.contains(query, ignoreCase = true)
                 
@@ -473,13 +514,9 @@ fun MainScreen(
                     )
                 }
                 
-                if (filteredPeople == null) {
+                if (filteredPeople.isEmpty() && searchQuery.isNotBlank()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else if (filteredPeople.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(if (searchQuery.isBlank()) "No people added yet." else "No matches found.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("No matches found.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(

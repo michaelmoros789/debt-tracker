@@ -1,9 +1,11 @@
 package com.michaelmoros.debttracker
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.michaelmoros.debttracker.util.DebtSorter
+import com.michaelmoros.debttracker.util.LedgerManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +35,9 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
     private val _exportNamingConvention = MutableStateFlow(settingsManager.exportNamingConvention)
     val exportNamingConvention = _exportNamingConvention.asStateFlow()
 
+    private val _ledgerCount = MutableStateFlow(0)
+    val ledgerCount = _ledgerCount.asStateFlow()
+
     val contexts = dao.getAllContexts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _searchQuery = MutableStateFlow("")
@@ -54,6 +59,26 @@ class DebtViewModel(application: Application) : AndroidViewModel(application) {
             DebtSorter.sort(filtered, field, order)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        updateLedgerCount()
+    }
+
+    fun updateLedgerCount() {
+        viewModelScope.launch {
+            _ledgerCount.value = LedgerManager.countGeneratedLedgers(getApplication())
+        }
+    }
+
+    fun getLedgerUris(): List<Uri> {
+        return LedgerManager.getLedgerUris(getApplication())
+    }
+
+    fun purgeLedgersLegacy(uris: List<Uri>): Int {
+        val deleted = LedgerManager.purgeLegacy(getApplication(), uris)
+        updateLedgerCount()
+        return deleted
+    }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query

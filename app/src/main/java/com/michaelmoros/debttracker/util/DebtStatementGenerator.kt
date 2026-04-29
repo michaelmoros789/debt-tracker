@@ -226,6 +226,7 @@ object DebtStatementGenerator {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.Images.Media.DESCRIPTION, "com.michaelmoros.debttracker.generated_ledger")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + File.separator + "DebtLedger")
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
